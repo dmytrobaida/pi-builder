@@ -1,0 +1,20 @@
+{
+  "name": "@dmytrobaida/pi-builder",
+  "version": "0.1.0",
+  "private": false,
+  "keywords": ["pi-package"],
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "extensions",
+    "README.md"
+  ],
+  "pi": {
+    "extensions": ["./extensions/index.ts"]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  }
+}
