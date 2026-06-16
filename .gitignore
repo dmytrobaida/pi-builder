@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Yarn local state
+.yarn/install-state.gz
+.pnp.*
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Local Pi/runtime files
+.pi/

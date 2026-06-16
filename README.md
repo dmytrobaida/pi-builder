@@ -20,13 +20,35 @@ Restart Pi after installation, or run this inside Pi:
 
 ## What it adds
 
-Currently this package includes a starter Pi extension. More commands and customizations will be added over time.
+When Pi starts, this package automatically clones its source repository to your global Pi agent directory:
 
-When installed, Pi discovers the package through its package manifest and loads the extension automatically.
+```text
+~/.pi/agent/.pi-builder
+```
+
+If you use a custom Pi agent directory with `PI_CODING_AGENT_DIR`, the clone is created there instead:
+
+```text
+$PI_CODING_AGENT_DIR/.pi-builder
+```
+
+Source repository:
+
+```text
+https://github.com/dmytrobaida/pi-builder.git
+```
+
+The package also adds this command inside Pi:
+
+```text
+/pi-builder-path
+```
+
+Use it to show where the local source repository is stored.
 
 ## Updating
 
-To update to the latest version:
+To update to the latest package version:
 
 ```bash
 pi update npm:@dmytrobaida/pi-builder
@@ -58,6 +80,12 @@ If the extension does not seem active:
 2. Restart Pi.
 3. Confirm the package appears in `pi list`.
 4. Update the package with `pi update npm:@dmytrobaida/pi-builder`.
+
+If the source repository was not cloned, check that `git` is installed and that this URL is reachable from your machine:
+
+```text
+https://github.com/dmytrobaida/pi-builder.git
+```
 
 ## Security
 
