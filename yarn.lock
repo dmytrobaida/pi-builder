@@ -381,9 +381,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@dmytrobaida/pi-builder@workspace:.":
+"@dbaida/pi-builder@workspace:.":
   version: 0.0.0-use.local
-  resolution: "@dmytrobaida/pi-builder@workspace:."
+  resolution: "@dbaida/pi-builder@workspace:."
   dependencies:
     "@earendil-works/pi-coding-agent": "npm:^0.79.4"
     "@eslint/js": "npm:^10.0.1"

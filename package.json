@@ -1,22 +1,44 @@
 {
-  "name": "@dmytrobaida/pi-builder",
+  "name": "@dbaida/pi-builder",
   "version": "0.1.0",
+  "description": "Personal Pi customization package that bootstraps a private editable config repository.",
   "keywords": [
-    "pi-package"
+    "pi-package",
+    "pi",
+    "pi-extension",
+    "coding-agent"
   ],
+  "license": "MIT",
   "type": "module",
   "packageManager": "yarn@4.16.0",
+  "homepage": "https://github.com/dmytrobaida/pi-builder#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dmytrobaida/pi-builder.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dmytrobaida/pi-builder/issues"
+  },
   "publishConfig": {
     "access": "public"
   },
   "files": [
     "extensions",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "pi": {
     "extensions": [
       "./extensions/index.ts"
     ]
+  },
+  "scripts": {
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "tsc --noEmit",
+    "prepack": "yarn lint && yarn typecheck && yarn format:check"
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*"
@@ -29,12 +51,5 @@
     "prettier": "^3.8.4",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.61.0"
-  },
-  "scripts": {
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "typecheck": "tsc --noEmit"
   }
 }

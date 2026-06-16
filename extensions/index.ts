@@ -1,54 +1,214 @@
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { existsSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { REPO_URL } from "./constants.js";
-import { getRepoDir } from "./utils.js";
+import { CONFIG_REPO_NAME } from "./config.js";
+import { SOURCE_REPO_URL } from "./constants.js";
+import { setPiBuilderStatus } from "./status.js";
+import { getCommandOutputMessage, getRepoDir } from "./utils.js";
+
+const DEFAULT_BRANCH = "HEAD";
 
 export default function (pi: ExtensionAPI) {
   pi.on("session_start", async (_event, ctx) => {
-    const repoDir = getRepoDir();
+    setPiBuilderStatus(ctx, "running", "checking setup");
 
-    if (existsSync(join(repoDir, ".git"))) {
-      return;
-    }
+    const ghCheck = await pi.exec("gh", ["--version"], {
+      timeout: 10_000,
+    });
 
-    if (existsSync(repoDir)) {
+    if (ghCheck.code !== 0) {
+      setPiBuilderStatus(ctx, "error", "GitHub CLI is not installed");
       ctx.ui.notify(
-        `pi-builder source directory exists but is not a git repo: ${repoDir}`,
-        "warning",
+        "GitHub CLI is not installed. Install `gh` to use pi-builder GitHub workflows.",
+        "error",
       );
       return;
     }
 
-    ctx.ui.notify(`Cloning pi-builder source repo to ${repoDir}...`, "info");
-
-    await mkdir(dirname(repoDir), { recursive: true });
-
-    const result = await pi.exec("git", ["clone", REPO_URL, repoDir], {
-      timeout: 120_000,
+    const authCheck = await pi.exec("gh", ["auth", "status"], {
+      timeout: 10_000,
     });
 
-    if (result.code !== 0) {
-      let message = "Failed to clone pi-builder repo";
+    if (authCheck.code !== 0) {
+      setPiBuilderStatus(ctx, "error", "GitHub CLI is not logged in");
+      ctx.ui.notify("GitHub CLI is not logged in. Run `gh auth login` and restart Pi.", "error");
+      return;
+    }
 
-      if (result.stderr.length > 0) {
-        message = result.stderr;
-      } else if (result.stdout.length > 0) {
-        message = result.stdout;
-      }
+    const repoDir = getRepoDir();
 
+    if (existsSync(join(repoDir, ".git"))) {
+      setPiBuilderStatus(ctx, "ready", `config repo: ${repoDir}`);
+      return;
+    }
+
+    if (existsSync(repoDir)) {
+      const message = `Config directory exists but is not a git repo: ${repoDir}`;
+      setPiBuilderStatus(ctx, "error", message);
+      ctx.ui.notify(message, "warning");
+      return;
+    }
+
+    const userResult = await pi.exec("gh", ["api", "user", "--jq", ".login"], {
+      timeout: 10_000,
+    });
+
+    if (userResult.code !== 0) {
+      const message = getCommandOutputMessage(userResult, "Failed to detect GitHub username");
+      setPiBuilderStatus(ctx, "error", message);
       ctx.ui.notify(message, "error");
       return;
     }
 
-    ctx.ui.notify(`pi-builder source repo cloned to ${repoDir}`, "info");
+    const owner = userResult.stdout.trim();
+    const configRepo = `${owner}/${CONFIG_REPO_NAME}`;
+
+    if (owner.length === 0) {
+      const message = "Failed to detect GitHub username";
+      setPiBuilderStatus(ctx, "error", message);
+      ctx.ui.notify(message, "error");
+      return;
+    }
+
+    await mkdir(dirname(repoDir), { recursive: true });
+
+    const repoCheck = await pi.exec(
+      "gh",
+      ["repo", "view", configRepo, "--json", "isPrivate", "--jq", ".isPrivate"],
+      {
+        timeout: 10_000,
+      },
+    );
+
+    if (repoCheck.code === 0) {
+      if (repoCheck.stdout.trim() !== "true") {
+        const message = `GitHub repo ${configRepo} exists but is not private`;
+        setPiBuilderStatus(ctx, "error", message);
+        ctx.ui.notify(message, "error");
+        return;
+      }
+
+      setPiBuilderStatus(ctx, "running", `cloning ${configRepo}`);
+      await cloneConfigRepo(pi, configRepo, repoDir, ctx);
+      return;
+    }
+
+    setPiBuilderStatus(ctx, "running", `creating private repo ${configRepo}`);
+
+    const createResult = await pi.exec(
+      "gh",
+      [
+        "repo",
+        "create",
+        configRepo,
+        "--private",
+        "--description",
+        "Personal Pi builder configuration",
+      ],
+      {
+        timeout: 60_000,
+      },
+    );
+
+    if (createResult.code !== 0) {
+      const message = getCommandOutputMessage(createResult, `Failed to create ${configRepo}`);
+      setPiBuilderStatus(ctx, "error", message);
+      ctx.ui.notify(message, "error");
+      return;
+    }
+
+    const setupGitResult = await pi.exec("gh", ["auth", "setup-git"], {
+      timeout: 30_000,
+    });
+
+    if (setupGitResult.code !== 0) {
+      const message = getCommandOutputMessage(setupGitResult, "Failed to configure gh git auth");
+      setPiBuilderStatus(ctx, "error", message);
+      ctx.ui.notify(message, "error");
+      return;
+    }
+
+    setPiBuilderStatus(ctx, "running", "initializing config repo from pi-builder");
+    ctx.ui.notify(`Creating private pi-builder config repo ${configRepo}...`, "info");
+
+    const cloneSourceResult = await pi.exec("git", ["clone", SOURCE_REPO_URL, repoDir], {
+      timeout: 120_000,
+    });
+
+    if (cloneSourceResult.code !== 0) {
+      const message = getCommandOutputMessage(
+        cloneSourceResult,
+        "Failed to clone pi-builder source",
+      );
+      setPiBuilderStatus(ctx, "error", message);
+      ctx.ui.notify(message, "error");
+      return;
+    }
+
+    const remoteUrl = `https://github.com/${configRepo}.git`;
+    const setRemoteResult = await pi.exec(
+      "git",
+      ["-C", repoDir, "remote", "set-url", "origin", remoteUrl],
+      {
+        timeout: 10_000,
+      },
+    );
+
+    if (setRemoteResult.code !== 0) {
+      const message = getCommandOutputMessage(
+        setRemoteResult,
+        "Failed to repoint config repo remote",
+      );
+      setPiBuilderStatus(ctx, "error", message);
+      ctx.ui.notify(message, "error");
+      return;
+    }
+
+    const pushResult = await pi.exec(
+      "git",
+      ["-C", repoDir, "push", "-u", "origin", DEFAULT_BRANCH],
+      {
+        timeout: 120_000,
+      },
+    );
+
+    if (pushResult.code !== 0) {
+      const message = getCommandOutputMessage(pushResult, `Failed to push initial ${configRepo}`);
+      setPiBuilderStatus(ctx, "error", message);
+      ctx.ui.notify(message, "error");
+      return;
+    }
+
+    setPiBuilderStatus(ctx, "ready", `config repo: ${repoDir}`);
+    ctx.ui.notify(`pi-builder config repo is ready: ${configRepo}`, "info");
   });
 
   pi.registerCommand("pi-builder-path", {
-    description: "Show the local pi-builder source repository path",
+    description: "Show the local pi-builder config repository path",
     handler: async (_args, ctx) => {
       ctx.ui.notify(getRepoDir(), "info");
     },
   });
+}
+
+async function cloneConfigRepo(
+  pi: ExtensionAPI,
+  configRepo: string,
+  repoDir: string,
+  ctx: ExtensionContext,
+): Promise<void> {
+  const result = await pi.exec("gh", ["repo", "clone", configRepo, repoDir], {
+    timeout: 120_000,
+  });
+
+  if (result.code !== 0) {
+    const message = getCommandOutputMessage(result, `Failed to clone ${configRepo}`);
+    setPiBuilderStatus(ctx, "error", message);
+    ctx.ui.notify(message, "error");
+    return;
+  }
+
+  setPiBuilderStatus(ctx, "ready", `config repo: ${repoDir}`);
+  ctx.ui.notify(`pi-builder config repo cloned to ${repoDir}`, "info");
 }

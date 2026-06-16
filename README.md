@@ -1,15 +1,15 @@
 # pi-builder
 
-Personal Pi customization package.
+Personal Pi customization package for Pi.
 
-This package adds reusable Pi extensions, prompts, skills, and themes that can be installed into Pi with one command.
+This package helps you keep a private, editable copy of your Pi customization setup while installing the runtime extension through npm.
 
 ## Installation
 
 Install the package in Pi:
 
 ```bash
-pi install npm:@dmytrobaida/pi-builder
+pi install npm:@dbaida/pi-builder
 ```
 
 Restart Pi after installation, or run this inside Pi:
@@ -18,9 +18,22 @@ Restart Pi after installation, or run this inside Pi:
 /reload
 ```
 
-## What it adds
+## First run
 
-When Pi starts, this package automatically clones its source repository to your global Pi agent directory:
+On startup, pi-builder checks for GitHub CLI:
+
+```bash
+gh --version
+gh auth status
+```
+
+If `gh` is installed and logged in, pi-builder creates or reuses a private GitHub repository in your account named:
+
+```text
+pi-builder-config
+```
+
+Then it clones that private config repository to your global Pi agent directory:
 
 ```text
 ~/.pi/agent/.pi-builder
@@ -32,26 +45,43 @@ If you use a custom Pi agent directory with `PI_CODING_AGENT_DIR`, the clone is 
 $PI_CODING_AGENT_DIR/.pi-builder
 ```
 
-Source repository:
+The private config repo is initialized from:
 
 ```text
 https://github.com/dmytrobaida/pi-builder.git
 ```
 
-The package also adds this command inside Pi:
+You can override the private repo name with:
+
+```bash
+PI_BUILDER_CONFIG_REPO_NAME=my-custom-pi-config pi
+```
+
+## Status bar
+
+pi-builder shows its current state in Pi's bottom status bar:
+
+```text
+pi-builder: running — checking setup
+pi-builder: running — creating private repo <user>/pi-builder-config
+pi-builder: ready — config repo: ~/.pi/agent/.pi-builder
+pi-builder: error — GitHub CLI is not installed
+```
+
+## Commands
+
+Show where the local config repository is stored:
 
 ```text
 /pi-builder-path
 ```
-
-Use it to show where the local source repository is stored.
 
 ## Updating
 
 To update to the latest package version:
 
 ```bash
-pi update npm:@dmytrobaida/pi-builder
+pi update npm:@dbaida/pi-builder
 ```
 
 Or update all installed Pi packages:
@@ -74,18 +104,24 @@ Check that Pi sees the package:
 pi list
 ```
 
-If the extension does not seem active:
+If pi-builder reports that GitHub CLI is missing, install it and restart Pi:
 
-1. Run `/reload` inside Pi.
-2. Restart Pi.
-3. Confirm the package appears in `pi list`.
-4. Update the package with `pi update npm:@dmytrobaida/pi-builder`.
-
-If the source repository was not cloned, check that `git` is installed and that this URL is reachable from your machine:
-
-```text
-https://github.com/dmytrobaida/pi-builder.git
+```bash
+brew install gh
 ```
+
+If pi-builder reports that GitHub CLI is not logged in, run:
+
+```bash
+gh auth login
+```
+
+If the config repository was not cloned:
+
+1. Check the bottom status bar for the error message.
+2. Check that `git` and `gh` are installed.
+3. Check that `gh auth status` succeeds.
+4. Run `/reload` inside Pi or restart Pi.
 
 ## Security
 
