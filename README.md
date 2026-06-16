@@ -36,7 +36,7 @@ pi-builder-config
 Then it clones that private config repository to your global Pi agent directory:
 
 ```text
-~/.pi/agent/.pi-builder
+~/.pi/agent/.pi-builder-config
 ```
 
 After the private repository is ready, pi-builder updates your global Pi settings so future loads use your private git repository instead of the public npm package:
@@ -50,7 +50,7 @@ Restart Pi after this first-time switch so Pi loads the private package source.
 If you use a custom Pi agent directory with `PI_CODING_AGENT_DIR`, the clone is created there instead:
 
 ```text
-$PI_CODING_AGENT_DIR/.pi-builder
+$PI_CODING_AGENT_DIR/.pi-builder-config
 ```
 
 The private config repo is initialized from:
@@ -72,9 +72,28 @@ pi-builder shows its current state in Pi's bottom status bar:
 ```text
 pi-builder: running — checking setup
 pi-builder: running — creating private repo <user>/pi-builder-config
-pi-builder: ready — config repo: ~/.pi/agent/.pi-builder
+pi-builder: ready — config repo: ~/.pi/agent/.pi-builder-config
 pi-builder: error — GitHub CLI is not installed
 ```
+
+## Customizing your private config
+
+After first run, your editable config lives in:
+
+```text
+~/.pi/agent/.pi-builder-config
+```
+
+User customizations belong in the `user/` directories:
+
+```text
+user/extensions/  # custom Pi extensions
+user/skills/      # custom skills
+user/prompts/     # prompt templates
+user/themes/      # themes
+```
+
+pi-builder protects its sealed runtime files from agent edits to reduce merge conflicts when you upgrade later. Ask Pi to place new custom code under `user/` instead of editing the sealed package files.
 
 ## Commands
 
@@ -82,6 +101,48 @@ Show where the local config repository is stored:
 
 ```text
 /pi-builder-path
+```
+
+Ask Pi to extend your private config safely:
+
+```text
+/pi-builder-extend add a prompt template for reviewing pull requests
+```
+
+Copy global Pi resources into your private config repo:
+
+```text
+/pi-builder-sync-global
+```
+
+Validate your private config and reload Pi resources:
+
+```text
+/pi-builder-validate
+```
+
+Commit, tag, and push local config changes to your private repo's `main` branch:
+
+```text
+/pi-builder-sync
+```
+
+Sync tags use this format:
+
+```text
+<current-extension-version>-udv-<number>
+```
+
+Example:
+
+```text
+0.1.1-udv-1
+```
+
+Merge the latest upstream pi-builder changes into your private config repo:
+
+```text
+/pi-builder-upgrade
 ```
 
 ## Updating

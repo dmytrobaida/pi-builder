@@ -1,4 +1,4 @@
-import { join } from "node:path";
+import { relative, resolve, sep, join } from "node:path";
 import { PI_AGENT_DIR } from "./config.js";
 
 type CommandOutput = {
@@ -7,7 +7,7 @@ type CommandOutput = {
 };
 
 export function getRepoDir(): string {
-  return join(PI_AGENT_DIR, ".pi-builder");
+  return join(PI_AGENT_DIR, ".pi-builder-config");
 }
 
 export function getGlobalSettingsPath(): string {
@@ -16,6 +16,37 @@ export function getGlobalSettingsPath(): string {
 
 export function getPrivateGitPackageSource(configRepo: string): string {
   return `git:https://github.com/${configRepo}.git`;
+}
+
+export function getUserExtensionsDir(): string {
+  return join(getRepoDir(), "user", "extensions");
+}
+
+export function getUserSkillsDir(): string {
+  return join(getRepoDir(), "user", "skills");
+}
+
+export function getUserPromptsDir(): string {
+  return join(getRepoDir(), "user", "prompts");
+}
+
+export function getUserThemesDir(): string {
+  return join(getRepoDir(), "user", "themes");
+}
+
+export function isInsidePath(parent: string, child: string): boolean {
+  const relativePath = relative(resolve(parent), resolve(child));
+
+  return (
+    relativePath.length === 0 ||
+    (!relativePath.startsWith("..") &&
+      relativePath !== ".." &&
+      !relativePath.startsWith(`..${sep}`))
+  );
+}
+
+export function shellQuote(value: string): string {
+  return `'${value.replaceAll("'", "'\\''")}'`;
 }
 
 export function getCommandOutputMessage(result: CommandOutput, fallback: string): string {

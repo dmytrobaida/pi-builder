@@ -1,6 +1,6 @@
 {
   "name": "@dbaida/pi-builder",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Personal Pi customization package that bootstraps a private editable config repository.",
   "keywords": [
     "pi-package",
@@ -24,12 +24,23 @@
   },
   "files": [
     "extensions",
+    "user",
     "README.md",
     "LICENSE"
   ],
   "pi": {
     "extensions": [
-      "./extensions/index.ts"
+      "./extensions/index.ts",
+      "./user/extensions"
+    ],
+    "skills": [
+      "./user/skills"
+    ],
+    "prompts": [
+      "./user/prompts"
+    ],
+    "themes": [
+      "./user/themes"
     ]
   },
   "scripts": {

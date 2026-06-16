@@ -2,8 +2,10 @@ import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-a
 import { existsSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { registerCommands } from "./commands.js";
 import { CONFIG_REPO_NAME } from "./config.js";
 import { SOURCE_REPO_URL } from "./constants.js";
+import { registerGuardrails } from "./guardrails.js";
 import { replaceNpmPackageWithPrivateGitRepo } from "./settings.js";
 import { setPiBuilderStatus } from "./status.js";
 import { getCommandOutputMessage, getRepoDir } from "./utils.js";
@@ -11,6 +13,9 @@ import { getCommandOutputMessage, getRepoDir } from "./utils.js";
 const DEFAULT_BRANCH = "HEAD";
 
 export default function (pi: ExtensionAPI) {
+  registerGuardrails(pi);
+  registerCommands(pi);
+
   pi.on("session_start", async (_event, ctx) => {
     setPiBuilderStatus(ctx, "running", "checking setup");
 
@@ -185,13 +190,6 @@ export default function (pi: ExtensionAPI) {
     await updatePackageSource(configRepo, ctx);
     setPiBuilderStatus(ctx, "ready", `config repo: ${repoDir}`);
     ctx.ui.notify(`pi-builder config repo is ready: ${configRepo}`, "info");
-  });
-
-  pi.registerCommand("pi-builder-path", {
-    description: "Show the local pi-builder config repository path",
-    handler: async (_args, ctx) => {
-      ctx.ui.notify(getRepoDir(), "info");
-    },
   });
 }
 
