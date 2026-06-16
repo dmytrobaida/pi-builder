@@ -39,6 +39,14 @@ Then it clones that private config repository to your global Pi agent directory:
 ~/.pi/agent/.pi-builder
 ```
 
+After the private repository is ready, pi-builder updates your global Pi settings so future loads use your private git repository instead of the public npm package:
+
+```text
+npm:@dbaida/pi-builder → git:https://github.com/<you>/pi-builder-config.git
+```
+
+Restart Pi after this first-time switch so Pi loads the private package source.
+
 If you use a custom Pi agent directory with `PI_CODING_AGENT_DIR`, the clone is created there instead:
 
 ```text
@@ -122,6 +130,14 @@ If the config repository was not cloned:
 2. Check that `git` and `gh` are installed.
 3. Check that `gh auth status` succeeds.
 4. Run `/reload` inside Pi or restart Pi.
+
+If Pi still loads the npm package after the private repository is ready, restart Pi and check your global Pi settings:
+
+```text
+~/.pi/agent/settings.json
+```
+
+The `packages` list should contain your private git repository instead of `npm:@dbaida/pi-builder`.
 
 ## Security
 

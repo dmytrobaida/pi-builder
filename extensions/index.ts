@@ -4,6 +4,7 @@ import { mkdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { CONFIG_REPO_NAME } from "./config.js";
 import { SOURCE_REPO_URL } from "./constants.js";
+import { replaceNpmPackageWithPrivateGitRepo } from "./settings.js";
 import { setPiBuilderStatus } from "./status.js";
 import { getCommandOutputMessage, getRepoDir } from "./utils.js";
 
@@ -36,20 +37,6 @@ export default function (pi: ExtensionAPI) {
       return;
     }
 
-    const repoDir = getRepoDir();
-
-    if (existsSync(join(repoDir, ".git"))) {
-      setPiBuilderStatus(ctx, "ready", `config repo: ${repoDir}`);
-      return;
-    }
-
-    if (existsSync(repoDir)) {
-      const message = `Config directory exists but is not a git repo: ${repoDir}`;
-      setPiBuilderStatus(ctx, "error", message);
-      ctx.ui.notify(message, "warning");
-      return;
-    }
-
     const userResult = await pi.exec("gh", ["api", "user", "--jq", ".login"], {
       timeout: 10_000,
     });
@@ -62,12 +49,27 @@ export default function (pi: ExtensionAPI) {
     }
 
     const owner = userResult.stdout.trim();
-    const configRepo = `${owner}/${CONFIG_REPO_NAME}`;
 
     if (owner.length === 0) {
       const message = "Failed to detect GitHub username";
       setPiBuilderStatus(ctx, "error", message);
       ctx.ui.notify(message, "error");
+      return;
+    }
+
+    const configRepo = `${owner}/${CONFIG_REPO_NAME}`;
+    const repoDir = getRepoDir();
+
+    if (existsSync(join(repoDir, ".git"))) {
+      await updatePackageSource(configRepo, ctx);
+      setPiBuilderStatus(ctx, "ready", `config repo: ${repoDir}`);
+      return;
+    }
+
+    if (existsSync(repoDir)) {
+      const message = `Config directory exists but is not a git repo: ${repoDir}`;
+      setPiBuilderStatus(ctx, "error", message);
+      ctx.ui.notify(message, "warning");
       return;
     }
 
@@ -180,6 +182,7 @@ export default function (pi: ExtensionAPI) {
       return;
     }
 
+    await updatePackageSource(configRepo, ctx);
     setPiBuilderStatus(ctx, "ready", `config repo: ${repoDir}`);
     ctx.ui.notify(`pi-builder config repo is ready: ${configRepo}`, "info");
   });
@@ -209,6 +212,26 @@ async function cloneConfigRepo(
     return;
   }
 
+  await updatePackageSource(configRepo, ctx);
   setPiBuilderStatus(ctx, "ready", `config repo: ${repoDir}`);
   ctx.ui.notify(`pi-builder config repo cloned to ${repoDir}`, "info");
+}
+
+async function updatePackageSource(configRepo: string, ctx: ExtensionContext): Promise<void> {
+  try {
+    const changed = await replaceNpmPackageWithPrivateGitRepo(configRepo);
+
+    if (!changed) {
+      return;
+    }
+
+    ctx.ui.notify(
+      "pi-builder switched global Pi settings from npm package to private git repo. Restart Pi to load the private package source.",
+      "info",
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to update Pi settings";
+    setPiBuilderStatus(ctx, "error", message);
+    ctx.ui.notify(message, "error");
+  }
 }
