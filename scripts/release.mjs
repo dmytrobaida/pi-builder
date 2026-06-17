@@ -8,10 +8,23 @@ function main() {
   run("yarn", ["lint"]);
   run("yarn", ["typecheck"]);
   run("yarn", ["format:check"]);
-  run("npm", ["version", RELEASE_TYPE, "-m", "release v%s"]);
 
-  const version = getPackageVersion();
-  run("npm", ["publish", "--access", "public", "--tag", "latest"]);
+  const packageName = getPackageName();
+  let version = getPackageVersion();
+
+  if (localTagExists(version)) {
+    console.log(`Resuming release v${version}`);
+  } else {
+    run("npm", ["version", RELEASE_TYPE, "-m", "release v%s"]);
+    version = getPackageVersion();
+  }
+
+  if (npmVersionExists(packageName, version)) {
+    console.log(`${packageName}@${version} is already published; skipping npm publish.`);
+  } else {
+    run("npm", ["publish", "--access", "public", "--tag", "latest"]);
+  }
+
   run("git", ["push", "origin", "HEAD", `v${version}`]);
 
   console.log(`Released v${version}`);
@@ -34,14 +47,46 @@ function assertCleanGitTree() {
   }
 }
 
+function getPackageName() {
+  const packageJson = getPackageJson();
+
+  if (typeof packageJson.name !== "string") {
+    throw new Error("package.json name is missing");
+  }
+
+  return packageJson.name;
+}
+
 function getPackageVersion() {
-  const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
+  const packageJson = getPackageJson();
 
   if (typeof packageJson.version !== "string") {
     throw new Error("package.json version is missing");
   }
 
   return packageJson.version;
+}
+
+function getPackageJson() {
+  return JSON.parse(readFileSync("package.json", "utf8"));
+}
+
+function localTagExists(version) {
+  const result = spawnSync("git", ["rev-parse", "--verify", `refs/tags/v${version}`], {
+    encoding: "utf8",
+    stdio: "pipe",
+  });
+
+  return result.status === 0;
+}
+
+function npmVersionExists(packageName, version) {
+  const result = spawnSync("npm", ["view", `${packageName}@${version}`, "version"], {
+    encoding: "utf8",
+    stdio: "pipe",
+  });
+
+  return result.status === 0 && result.stdout.trim() === version;
 }
 
 function run(command, args, options = {}) {
