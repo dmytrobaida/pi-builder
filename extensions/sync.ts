@@ -55,7 +55,7 @@ export async function pushConfigRepo(pi: ExtensionAPI, ctx: ExtensionContext): P
 
   const addResult = await pi.exec(
     "git",
-    ["-C", repoDir, "add", "user", "package.json", "README.md"],
+    ["-C", repoDir, "add", "user", "package.json", "yarn.lock", "README.md"],
     {
       timeout: 30_000,
     },

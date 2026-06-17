@@ -54,8 +54,9 @@ function blockProtectedBash(
   cwd: string,
 ): { block: true; reason: string } | undefined {
   const repoDir = getRepoDir();
+  const targetsConfigRepo = commandTargetsConfigRepo(command, cwd, repoDir);
 
-  if (!isInsidePath(repoDir, cwd)) {
+  if (!targetsConfigRepo) {
     return undefined;
   }
 
@@ -69,15 +70,23 @@ function blockProtectedBash(
   }
 
   for (const protectedPath of PROTECTED_PATHS) {
-    if (referencesProtectedPath(command, protectedPath)) {
+    if (referencesProtectedPath(command, repoDir, protectedPath)) {
       return {
         block: true,
-        reason: `pi-builder sealed path is protected from bash mutations: ${protectedPath}. Put custom code under user/ instead.`,
+        reason: `pi-builder sealed path is protected from bash mutations: ${protectedPath}. Put user config in package.json, yarn.lock, or user/ instead.`,
       };
     }
   }
 
   return undefined;
+}
+
+function commandTargetsConfigRepo(command: string, cwd: string, repoDir: string): boolean {
+  if (isInsidePath(repoDir, cwd)) {
+    return true;
+  }
+
+  return command.includes(repoDir) || command.includes("~/.pi/agent/.pi-builder-config");
 }
 
 function getRawGitSyncCommand(command: string): string | undefined {
@@ -98,9 +107,14 @@ function getRawGitSyncCommand(command: string): string | undefined {
   return `git ${subcommand}`;
 }
 
-function referencesProtectedPath(command: string, protectedPath: string): boolean {
+function referencesProtectedPath(command: string, repoDir: string, protectedPath: string): boolean {
   const escapedPath = protectedPath.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const pattern = new RegExp(`(^|[\\s'"\`])${escapedPath}(/|[\\s'"\`]|$)`);
+  const escapedAbsolutePath = resolve(repoDir, protectedPath).replaceAll(
+    /[.*+?^${}()|[\]\\]/g,
+    "\\$&",
+  );
+  const relativePattern = new RegExp(`(^|[\\s'"\`])${escapedPath}(/|[\\s'"\`]|$)`);
+  const absolutePattern = new RegExp(`(^|[\\s'"\`])${escapedAbsolutePath}(/|[\\s'"\`]|$)`);
 
-  return pattern.test(command);
+  return relativePattern.test(command) || absolutePattern.test(command);
 }

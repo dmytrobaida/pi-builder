@@ -21,8 +21,6 @@ export const CUSTOMIZATION_HELP = `pi-builder customization rules:
 
 export const PROTECTED_PATHS = [
   "extensions",
-  "package.json",
-  "yarn.lock",
   "tsconfig.json",
   "eslint.config.js",
   ".prettierrc.json",
