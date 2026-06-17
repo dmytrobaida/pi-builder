@@ -1,6 +1,6 @@
 {
   "name": "@dbaida/pi-builder",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "Personal Pi customization package that bootstraps a private editable config repository.",
   "keywords": [
     "pi-package",
