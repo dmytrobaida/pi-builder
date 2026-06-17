@@ -12,7 +12,7 @@ function main() {
   const packageName = getPackageName();
   let version = getPackageVersion();
 
-  if (localTagExists(version)) {
+  if (shouldResumeRelease(packageName, version)) {
     console.log(`Resuming release v${version}`);
   } else {
     run("npm", ["version", RELEASE_TYPE, "-m", "release v%s"]);
@@ -47,6 +47,27 @@ function assertCleanGitTree() {
   }
 }
 
+function shouldResumeRelease(packageName, version) {
+  if (!localTagExists(version)) {
+    return false;
+  }
+
+  if (!localTagPointsToHead(version)) {
+    console.log(
+      `v${version} exists but does not point to HEAD; creating a new ${RELEASE_TYPE} release instead.`,
+    );
+    return false;
+  }
+
+  if (npmVersionExists(packageName, version)) {
+    throw new Error(
+      `${packageName}@${version} is already published and v${version} points to HEAD. Nothing to release.`,
+    );
+  }
+
+  return true;
+}
+
 function getPackageName() {
   const packageJson = getPackageJson();
 
@@ -78,6 +99,17 @@ function localTagExists(version) {
   });
 
   return result.status === 0;
+}
+
+function localTagPointsToHead(version) {
+  const head = run("git", ["rev-parse", "HEAD"], {
+    capture: true,
+  });
+  const tag = run("git", ["rev-parse", `v${version}`], {
+    capture: true,
+  });
+
+  return head === tag;
 }
 
 function npmVersionExists(packageName, version) {
