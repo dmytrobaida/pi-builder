@@ -2,7 +2,7 @@ import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-a
 import { cp, mkdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { PI_AGENT_DIR } from "./config.js";
-import { setPiBuilderStatus } from "./status.js";
+import { refreshPiBuilderWidget, setPiBuilderStatus } from "./status.js";
 import { validateConfigRepo } from "./validation.js";
 import {
   getCommandOutputMessage,
@@ -27,6 +27,7 @@ export async function syncGlobalPiConfig(pi: ExtensionAPI, ctx: ExtensionContext
   await copyGlobalResource("themes", getUserThemesDir());
 
   await validateConfigRepo(pi, ctx);
+  await refreshPiBuilderWidget(pi, ctx);
   ctx.ui.notify("Global Pi resources synced into pi-builder config user/ directories", "info");
 }
 
@@ -59,7 +60,7 @@ export async function pushConfigRepo(pi: ExtensionAPI, ctx: ExtensionContext): P
 
   if (diffResult.code === 0) {
     ctx.ui.notify("No pi-builder config changes to sync", "info");
-    setPiBuilderStatus(ctx, "ready", `config repo: ${repoDir}`);
+    await refreshPiBuilderWidget(pi, ctx);
     return;
   }
 
@@ -99,7 +100,7 @@ export async function pushConfigRepo(pi: ExtensionAPI, ctx: ExtensionContext): P
     return;
   }
 
-  setPiBuilderStatus(ctx, "ready", `pushed ${tag}`);
+  await refreshPiBuilderWidget(pi, ctx);
   ctx.ui.notify(`pi-builder config pushed to main with tag ${tag}`, "info");
 }
 
@@ -133,8 +134,9 @@ export async function upgradeConfigRepo(pi: ExtensionAPI, ctx: ExtensionContext)
   }
 
   await validateConfigRepo(pi, ctx);
+  await refreshPiBuilderWidget(pi, ctx);
   ctx.ui.notify(
-    "pi-builder config upgraded from upstream. Run /pi-builder-sync to push it.",
+    "pi-builder config upgraded from upstream. Run /pi-builder sync to push it.",
     "info",
   );
 }

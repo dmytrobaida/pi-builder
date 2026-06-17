@@ -388,8 +388,10 @@ __metadata:
     "@earendil-works/pi-coding-agent": "npm:^0.79.4"
     "@eslint/js": "npm:^10.0.1"
     "@types/node": "npm:^25.9.3"
+    "@types/string-argv": "npm:^0.3.0"
     eslint: "npm:^10.5.0"
     prettier: "npm:^3.8.4"
+    string-argv: "npm:^0.3.2"
     typescript: "npm:^6.0.3"
     typescript-eslint: "npm:^8.61.0"
   peerDependencies:
@@ -942,6 +944,15 @@ __metadata:
   version: 0.12.0
   resolution: "@types/retry@npm:0.12.0"
   checksum: 10c0/7c5c9086369826f569b83a4683661557cab1361bac0897a1cefa1a915ff739acd10ca0d62b01071046fe3f5a3f7f2aec80785fe283b75602dc6726781ea3e328
+  languageName: node
+  linkType: hard
+
+"@types/string-argv@npm:^0.3.0":
+  version: 0.3.0
+  resolution: "@types/string-argv@npm:0.3.0"
+  dependencies:
+    string-argv: "npm:*"
+  checksum: 10c0/665d30b5b8e302bf651f121bbd748f457423137d14bc3f7b1e9a4f160c48961d4f8bc5ef92ce90007883467cfc4594b387e4f1c15256653cecfaf50f57687dd0
   languageName: node
   linkType: hard
 
@@ -2017,6 +2028,13 @@ __metadata:
   version: 3.0.7
   resolution: "signal-exit@npm:3.0.7"
   checksum: 10c0/25d272fa73e146048565e08f3309d5b942c1979a6f4a58a8c59d5fa299728e9c2fcd1a759ec870863b1fd38653670240cd420dad2ad9330c71f36608a6a1c912
+  languageName: node
+  linkType: hard
+
+"string-argv@npm:*, string-argv@npm:^0.3.2":
+  version: 0.3.2
+  resolution: "string-argv@npm:0.3.2"
+  checksum: 10c0/75c02a83759ad1722e040b86823909d9a2fc75d15dd71ec4b537c3560746e33b5f5a07f7332d1e3f88319909f82190843aa2f0a0d8c8d591ec08e93d5b8dec82
   languageName: node
   linkType: hard
 

@@ -60,7 +60,7 @@ function blockProtectedBash(
   }
 
   for (const protectedPath of PROTECTED_PATHS) {
-    if (command.includes(protectedPath)) {
+    if (referencesProtectedPath(command, protectedPath)) {
       return {
         block: true,
         reason: `pi-builder sealed path is protected from bash mutations: ${protectedPath}. Put custom code under user/ instead.`,
@@ -69,4 +69,11 @@ function blockProtectedBash(
   }
 
   return undefined;
+}
+
+function referencesProtectedPath(command: string, protectedPath: string): boolean {
+  const escapedPath = protectedPath.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pattern = new RegExp(`(^|[\\s'"\`])${escapedPath}(/|[\\s'"\`]|$)`);
+
+  return pattern.test(command);
 }

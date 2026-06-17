@@ -3,7 +3,7 @@ import type {
   ExtensionCommandContext,
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
-import { setPiBuilderStatus } from "./status.js";
+import { refreshPiBuilderWidget, setPiBuilderStatus } from "./status.js";
 import { getCommandOutputMessage, getRepoDir, shellQuote } from "./utils.js";
 
 export async function validateConfigRepo(
@@ -31,7 +31,7 @@ export async function validateConfigRepo(
     return false;
   }
 
-  setPiBuilderStatus(ctx, "ready", `config repo: ${repoDir}`);
+  await refreshPiBuilderWidget(pi, ctx);
   ctx.ui.notify("pi-builder config validation passed", "info");
   return true;
 }

@@ -25,6 +25,8 @@
   "files": [
     "extensions",
     "user",
+    "AGENTS.md",
+    "CUSTOMIZE.md",
     "README.md",
     "LICENSE"
   ],
@@ -49,7 +51,8 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
-    "prepack": "yarn lint && yarn typecheck && yarn format:check"
+    "prepack": "yarn lint && yarn typecheck && yarn format:check",
+    "release": "node scripts/release.mjs"
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*"
@@ -58,9 +61,13 @@
     "@earendil-works/pi-coding-agent": "^0.79.4",
     "@eslint/js": "^10.0.1",
     "@types/node": "^25.9.3",
+    "@types/string-argv": "^0.3.0",
     "eslint": "^10.5.0",
     "prettier": "^3.8.4",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.61.0"
+  },
+  "dependencies": {
+    "string-argv": "^0.3.2"
   }
 }

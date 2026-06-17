@@ -65,15 +65,23 @@ You can override the private repo name with:
 PI_BUILDER_CONFIG_REPO_NAME=my-custom-pi-config pi
 ```
 
-## Status bar
+## Status widget
 
-pi-builder shows its current state in Pi's bottom status bar:
+pi-builder shows a multiline widget below the editor with useful details:
 
 ```text
-pi-builder: running — checking setup
-pi-builder: running — creating private repo <user>/pi-builder-config
-pi-builder: ready — config repo: ~/.pi/agent/.pi-builder-config
-pi-builder: error — GitHub CLI is not installed
+pi-builder
+  config: dirty, 2 file(s) changed
+  branch: main
+  upstream: new version available: 0.1.4 (current 0.1.3)
+  gh: authenticated
+  path: ~/.pi/agent/.pi-builder-config
+```
+
+Refresh or print the same information on demand:
+
+```text
+/pi-builder status
 ```
 
 ## Customizing your private config
@@ -82,6 +90,12 @@ After first run, your editable config lives in:
 
 ```text
 ~/.pi/agent/.pi-builder-config
+```
+
+Start with the single pi-builder command:
+
+```text
+/pi-builder help
 ```
 
 User customizations belong in the `user/` directories:
@@ -95,36 +109,59 @@ user/themes/      # themes
 
 pi-builder protects its sealed runtime files from agent edits to reduce merge conflicts when you upgrade later. Ask Pi to place new custom code under `user/` instead of editing the sealed package files.
 
+The private config repo includes these guide files so users and agents do not need to search around:
+
+```text
+AGENTS.md
+CUSTOMIZE.md
+user/README.md
+```
+
 ## Commands
+
+Show help:
+
+```text
+/pi-builder help
+```
 
 Show where the local config repository is stored:
 
 ```text
-/pi-builder-path
+/pi-builder repo-location
 ```
 
 Ask Pi to extend your private config safely:
 
 ```text
-/pi-builder-extend add a prompt template for reviewing pull requests
+/pi-builder extend add a prompt template for reviewing pull requests
+```
+
+Create starter customization files:
+
+```text
+/pi-builder new-extension current-time
+/pi-builder new-skill release-checklist
+/pi-builder new-prompt review-pr
+/pi-builder new-theme my-theme
 ```
 
 Copy global Pi resources into your private config repo:
 
 ```text
-/pi-builder-sync-global
+/pi-builder sync-global
 ```
 
 Validate your private config and reload Pi resources:
 
 ```text
-/pi-builder-validate
+/pi-builder validate
 ```
 
 Commit, tag, and push local config changes to your private repo's `main` branch:
 
 ```text
-/pi-builder-sync
+/pi-builder sync
 ```
 
 Sync tags use this format:
@@ -136,13 +173,19 @@ Sync tags use this format:
 Example:
 
 ```text
-0.1.1-udv-1
+0.1.3-udv-1
 ```
 
 Merge the latest upstream pi-builder changes into your private config repo:
 
 ```text
-/pi-builder-upgrade
+/pi-builder upgrade
+```
+
+Check common setup problems:
+
+```text
+/pi-builder doctor
 ```
 
 ## Updating
