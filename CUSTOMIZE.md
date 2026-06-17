@@ -91,3 +91,5 @@ Do not use raw `git push` for normal config changes. `/pi-builder sync` is requi
 ```text
 <current-extension-version>-udv-<number>
 ```
+
+If the user asks to move/share Pi settings, installed packages, or device-local extensions into pi-builder config, update the private config repo (`~/.pi/agent/.pi-builder-config`) rather than the base pi-builder package. For package-backed extensions, add the npm package as a dependency and expose its extension path from the private config `package.json`. Show the diff and ask before running `/pi-builder sync`.

@@ -1,5 +1,5 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { existsSync } from "node:fs";
+import { existsSync, watch, type FSWatcher } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { STATUS_KEY } from "./constants.js";
@@ -22,6 +22,12 @@ type UpstreamSummary = {
   latestVersion: string;
   upgradeAvailable: boolean;
 };
+
+let repoWatcher: FSWatcher | undefined;
+let repoWatcherTimer: NodeJS.Timeout | undefined;
+let lastObservedChangedFiles = 0;
+let repoWatcherRefreshRunning = false;
+let repoWatcherRefreshQueued = false;
 
 export function setPiBuilderStatus(
   ctx: ExtensionContext,
@@ -77,6 +83,45 @@ export async function refreshPiBuilderWidget(
   ]);
 }
 
+export async function watchPiBuilderRepo(pi: ExtensionAPI, ctx: ExtensionContext): Promise<void> {
+  const repoDir = getRepoDir();
+
+  if (repoWatcher !== undefined || !existsSync(join(repoDir, ".git"))) {
+    return;
+  }
+
+  lastObservedChangedFiles = (await getDirtySummary(pi, repoDir)).changedFiles;
+
+  try {
+    repoWatcher = watch(repoDir, { recursive: true }, (_eventType, filename) => {
+      if (shouldIgnoreRepoWatchEvent(filename)) {
+        return;
+      }
+
+      scheduleRepoWatchRefresh(pi, ctx, repoDir);
+    });
+
+    repoWatcher.on("error", () => {
+      closePiBuilderRepoWatcher();
+    });
+  } catch {
+    repoWatcher = undefined;
+  }
+}
+
+export function closePiBuilderRepoWatcher(): void {
+  repoWatcher?.close();
+  repoWatcher = undefined;
+
+  if (repoWatcherTimer !== undefined) {
+    clearTimeout(repoWatcherTimer);
+    repoWatcherTimer = undefined;
+  }
+
+  repoWatcherRefreshRunning = false;
+  repoWatcherRefreshQueued = false;
+}
+
 export async function getPiBuilderStatusText(pi: ExtensionAPI): Promise<string> {
   const repoDir = getRepoDir();
 
@@ -110,6 +155,62 @@ function setPiBuilderWidget(ctx: ExtensionContext, lines: string[]): void {
   ctx.ui.setWidget(STATUS_KEY, lines, {
     placement: "belowEditor",
   });
+}
+
+function shouldIgnoreRepoWatchEvent(filename: string | Buffer | null): boolean {
+  if (filename === null) {
+    return false;
+  }
+
+  const path = filename.toString();
+
+  return path.startsWith(".git/") || path === ".git" || path.startsWith("node_modules/");
+}
+
+function scheduleRepoWatchRefresh(pi: ExtensionAPI, ctx: ExtensionContext, repoDir: string): void {
+  if (repoWatcherTimer !== undefined) {
+    clearTimeout(repoWatcherTimer);
+  }
+
+  repoWatcherTimer = setTimeout(() => {
+    repoWatcherTimer = undefined;
+    void refreshFromRepoWatcher(pi, ctx, repoDir);
+  }, 750);
+}
+
+async function refreshFromRepoWatcher(
+  pi: ExtensionAPI,
+  ctx: ExtensionContext,
+  repoDir: string,
+): Promise<void> {
+  if (repoWatcherRefreshRunning) {
+    repoWatcherRefreshQueued = true;
+    return;
+  }
+
+  repoWatcherRefreshRunning = true;
+
+  try {
+    const changedFiles = (await getDirtySummary(pi, repoDir)).changedFiles;
+
+    await refreshPiBuilderWidget(pi, ctx);
+
+    if (changedFiles > 0 && lastObservedChangedFiles === 0) {
+      ctx.ui.notify(
+        `pi-builder config has ${changedFiles} changed file(s). Run /pi-builder sync when ready.`,
+        "warning",
+      );
+    }
+
+    lastObservedChangedFiles = changedFiles;
+  } finally {
+    repoWatcherRefreshRunning = false;
+
+    if (repoWatcherRefreshQueued) {
+      repoWatcherRefreshQueued = false;
+      scheduleRepoWatchRefresh(pi, ctx, repoDir);
+    }
+  }
 }
 
 async function getDirtySummary(

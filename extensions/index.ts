@@ -9,7 +9,12 @@ import { CONFIG_REPO_NAME } from "./config.js";
 import { SOURCE_REPO_URL } from "./constants.js";
 import { registerGuardrails } from "./guardrails.js";
 import { replaceNpmPackageWithLocalRepo } from "./settings.js";
-import { refreshPiBuilderWidget, setPiBuilderStatus } from "./status.js";
+import {
+  closePiBuilderRepoWatcher,
+  refreshPiBuilderWidget,
+  setPiBuilderStatus,
+  watchPiBuilderRepo,
+} from "./status.js";
 import { getCommandOutputMessage, getRepoDir } from "./utils.js";
 
 const DEFAULT_BRANCH = "HEAD";
@@ -91,6 +96,7 @@ export default function (pi: ExtensionAPI) {
 
       await updatePackageSource(ctx);
       await refreshPiBuilderWidget(pi, ctx);
+      await watchPiBuilderRepo(pi, ctx);
       return;
     }
 
@@ -119,6 +125,10 @@ export default function (pi: ExtensionAPI) {
     }
 
     await createConfigRepoFromSource(pi, configRepo, repoDir, ctx);
+  });
+
+  pi.on("session_shutdown", () => {
+    closePiBuilderRepoWatcher();
   });
 }
 
@@ -263,6 +273,7 @@ async function pushConfigRepo(
 
   await updatePackageSource(ctx);
   await refreshPiBuilderWidget(pi, ctx);
+  await watchPiBuilderRepo(pi, ctx);
   ctx.ui.notify(`pi-builder config repo is ready: ${configRepo}`, "info");
 }
 
@@ -285,6 +296,7 @@ async function cloneConfigRepo(
 
   await updatePackageSource(ctx);
   await refreshPiBuilderWidget(pi, ctx);
+  await watchPiBuilderRepo(pi, ctx);
   ctx.ui.notify(`pi-builder config repo cloned to ${repoDir}`, "info");
 }
 
