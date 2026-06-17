@@ -1,5 +1,4 @@
 import { readFile, writeFile } from "node:fs/promises";
-import { CONFIG_REPO_NAME } from "./config.js";
 import { NPM_PACKAGE_SOURCE } from "./constants.js";
 import { getGlobalSettingsPath, getLocalPackageSource } from "./utils.js";
 
@@ -15,44 +14,42 @@ export async function replaceNpmPackageWithLocalRepo(): Promise<boolean> {
   const settings = await readSettings(settingsPath);
   const packages = settings.packages ?? [];
   const localPackageSource = getLocalPackageSource();
-  let changed = false;
-  let localPackageConfigured = false;
-  const nextPackages: PackageEntry[] = [];
+  let replaced = false;
+  let alreadyConfigured = false;
 
-  for (const entry of packages) {
-    const source = getPackageSource(entry);
-
-    if (source === localPackageSource) {
-      if (!localPackageConfigured) {
-        nextPackages.push(entry);
-        localPackageConfigured = true;
-      } else {
-        changed = true;
-      }
-
-      continue;
+  const nextPackages = packages.map((entry) => {
+    if (entry === localPackageSource) {
+      alreadyConfigured = true;
+      return entry;
     }
 
-    if (source === NPM_PACKAGE_SOURCE || isLegacyGitPackageSource(source)) {
-      changed = true;
-
-      if (!localPackageConfigured) {
-        nextPackages.push(replacePackageSource(entry, localPackageSource));
-        localPackageConfigured = true;
-      }
-
-      continue;
+    if (entry === NPM_PACKAGE_SOURCE) {
+      replaced = true;
+      return localPackageSource;
     }
 
-    nextPackages.push(entry);
-  }
+    if (typeof entry === "object" && entry.source === localPackageSource) {
+      alreadyConfigured = true;
+      return entry;
+    }
 
-  if (!localPackageConfigured) {
+    if (typeof entry === "object" && entry.source === NPM_PACKAGE_SOURCE) {
+      replaced = true;
+      return {
+        ...entry,
+        source: localPackageSource,
+      };
+    }
+
+    return entry;
+  });
+
+  if (!replaced && !alreadyConfigured) {
     nextPackages.push(localPackageSource);
-    changed = true;
+    replaced = true;
   }
 
-  if (!changed) {
+  if (!replaced) {
     return false;
   }
 
@@ -70,33 +67,6 @@ export async function replaceNpmPackageWithLocalRepo(): Promise<boolean> {
   );
 
   return true;
-}
-
-function getPackageSource(entry: PackageEntry): string | undefined {
-  if (typeof entry === "string") {
-    return entry;
-  }
-
-  return entry.source;
-}
-
-function replacePackageSource(entry: PackageEntry, source: string): PackageEntry {
-  if (typeof entry === "string") {
-    return source;
-  }
-
-  return {
-    ...entry,
-    source,
-  };
-}
-
-function isLegacyGitPackageSource(source: string | undefined): boolean {
-  if (source === undefined) {
-    return false;
-  }
-
-  return new RegExp(`^git:https://github\\.com/[^/]+/${CONFIG_REPO_NAME}\\.git$`).test(source);
 }
 
 async function readSettings(settingsPath: string): Promise<PiSettings> {

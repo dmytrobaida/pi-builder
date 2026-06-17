@@ -256,7 +256,7 @@ If Pi still loads the npm package after the private repository is ready, restart
 ~/.pi/agent/settings.json
 ```
 
-The `packages` list should contain your local config repo path instead of `npm:@dbaida/pi-builder` or the old `git:https://github.com/<you>/pi-builder-config.git` source.
+The `packages` list should contain your local config repo path instead of `npm:@dbaida/pi-builder`.
 
 ## Security
 
