@@ -133,12 +133,25 @@ export async function upgradeConfigRepo(pi: ExtensionAPI, ctx: ExtensionContext)
     return;
   }
 
-  await validateConfigRepo(pi, ctx);
+  const valid = await validateConfigRepo(pi, ctx);
+
+  if (!valid) {
+    return;
+  }
+
+  setPiBuilderStatus(ctx, "running", "pushing upgraded config repo");
+
+  const pushResult = await pi.exec("git", ["-C", repoDir, "push", "origin", "HEAD:main"], {
+    timeout: 120_000,
+  });
+
+  if (pushResult.code !== 0) {
+    notifyGitError(pushResult, "Failed to push upgraded pi-builder config", ctx);
+    return;
+  }
+
   await refreshPiBuilderWidget(pi, ctx);
-  ctx.ui.notify(
-    "pi-builder config upgraded from upstream. Run /pi-builder sync to push it.",
-    "info",
-  );
+  ctx.ui.notify("pi-builder config upgraded from upstream and pushed to private repo.", "info");
 }
 
 async function copyGlobalResource(name: string, destination: string): Promise<void> {

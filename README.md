@@ -176,11 +176,13 @@ Example:
 0.1.3-udv-1
 ```
 
-Merge the latest upstream pi-builder changes into your private config repo:
+Merge the latest upstream pi-builder changes into your private config repo and push the result automatically:
 
 ```text
 /pi-builder upgrade
 ```
+
+If Git reports merge conflicts, pi-builder stops before pushing so you can resolve them.
 
 Check common setup problems:
 
