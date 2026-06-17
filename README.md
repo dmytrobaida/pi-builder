@@ -39,13 +39,13 @@ Then it clones that private config repository to your global Pi agent directory:
 ~/.pi/agent/.pi-builder-config
 ```
 
-After the private repository is ready, pi-builder updates your global Pi settings so future loads use your private git repository instead of the public npm package:
+After the private repository is ready, pi-builder updates your global Pi settings so future loads use the editable local config repo instead of the public npm package:
 
 ```text
-npm:@dbaida/pi-builder → git:https://github.com/<you>/pi-builder-config.git
+npm:@dbaida/pi-builder → ~/.pi/agent/.pi-builder-config
 ```
 
-Restart Pi after this first-time switch so Pi loads the private package source.
+Restart Pi after this first-time switch so Pi loads the local package source.
 
 If you use a custom Pi agent directory with `PI_CODING_AGENT_DIR`, the clone is created there instead:
 
@@ -71,8 +71,7 @@ pi-builder shows a multiline widget below the editor with useful details:
 
 ```text
 pi-builder
-  config: dirty, 2 file(s) changed
-  branch: main
+  local: version 0.1.3-udv-1, 2 file(s) changed
   upstream: new version available: 0.1.4 (current 0.1.3)
   gh: authenticated
   path: ~/.pi/agent/.pi-builder-config
@@ -158,13 +157,21 @@ Validate your private config and reload Pi resources:
 /pi-builder validate
 ```
 
+Edit your personal injected agent rules:
+
+```text
+/pi-builder agents
+```
+
+Rules are stored in `user/AGENTS.md` and injected into every session so you can define your own agent rules, code style, and preferences.
+
 Commit, tag, and push local config changes to your private repo's `main` branch:
 
 ```text
 /pi-builder sync
 ```
 
-Use this command instead of raw `git push` for config changes so each private-repo push includes the required user-development tag.
+Use this command instead of raw `git push` for config changes so each private-repo push includes the required user-development tag. Before committing, pi-builder checks that your local config repo is up to date with `origin/main` and remote user-development tags so it does not create duplicate tags or push over changes from another machine.
 
 Sync tags use this format:
 
@@ -191,6 +198,10 @@ Check common setup problems:
 ```text
 /pi-builder doctor
 ```
+
+## Repeated workflow suggestions
+
+If pi-builder notices you asking for a similar workflow repeatedly, it can ask whether you want to turn that workflow into a reusable skill, prompt, or extension under `user/`.
 
 ## Updating
 
@@ -245,7 +256,7 @@ If Pi still loads the npm package after the private repository is ready, restart
 ~/.pi/agent/settings.json
 ```
 
-The `packages` list should contain your private git repository instead of `npm:@dbaida/pi-builder`.
+The `packages` list should contain your local config repo path instead of `npm:@dbaida/pi-builder`.
 
 ## Security
 

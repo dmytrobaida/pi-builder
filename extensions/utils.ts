@@ -14,8 +14,8 @@ export function getGlobalSettingsPath(): string {
   return join(PI_AGENT_DIR, "settings.json");
 }
 
-export function getPrivateGitPackageSource(configRepo: string): string {
-  return `git:https://github.com/${configRepo}.git`;
+export function getLocalPackageSource(): string {
+  return getRepoDir();
 }
 
 export function getUserExtensionsDir(): string {

@@ -8,6 +8,7 @@ This directory is the safe editable area for your private pi-builder config.
 - `skills/` — custom skills, each with a `SKILL.md`
 - `prompts/` — prompt templates (`.md` files)
 - `themes/` — Pi themes (`.json` files)
+- `AGENTS.md` — personal agent rules injected into each session
 
 ## Quick examples
 
@@ -27,6 +28,12 @@ Create an extension:
 
 ```text
 /pi-builder new-extension current-time
+```
+
+Edit personal agent rules:
+
+```text
+/pi-builder agents
 ```
 
 Ask Pi to customize this repo:

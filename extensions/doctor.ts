@@ -22,7 +22,7 @@ export async function runDoctor(pi: ExtensionAPI, ctx: ExtensionContext): Promis
 
   const settings = await readSettingsText();
   lines.push(
-    formatCheck("global settings use private git", !settings.includes(NPM_PACKAGE_SOURCE)),
+    formatCheck("global settings use local config repo", !settings.includes(NPM_PACKAGE_SOURCE)),
   );
 
   ctx.ui.notify(lines.join("\n"), "info");

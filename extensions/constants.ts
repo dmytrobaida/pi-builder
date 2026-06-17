@@ -16,7 +16,8 @@ export const CUSTOMIZATION_HELP = `pi-builder customization rules:
 - Use user/themes/ for themes.
 - Do not edit sealed runtime files in extensions/ or project config files.
 - After changes, run /pi-builder validate.
-- To save changes remotely, run /pi-builder sync.`;
+- To save changes remotely, run /pi-builder sync.
+- Do not use raw git commit, git tag, or git push in the private config repo; /pi-builder sync creates required user-development tags.`;
 
 export const PROTECTED_PATHS = [
   "extensions",

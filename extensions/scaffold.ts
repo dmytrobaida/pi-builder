@@ -23,23 +23,30 @@ export async function scaffoldCustomization(
   }
 
   if (kind === "extension") {
-    await scaffoldExtension(normalizedName);
+    await scaffoldExtension(normalizedName, ctx);
   } else if (kind === "prompt") {
-    await scaffoldPrompt(normalizedName);
+    await scaffoldPrompt(normalizedName, ctx);
   } else if (kind === "skill") {
-    await scaffoldSkill(normalizedName);
+    await scaffoldSkill(normalizedName, ctx);
   } else {
-    await scaffoldTheme(normalizedName);
+    await scaffoldTheme(normalizedName, ctx);
   }
 
   ctx.ui.notify(`Created user ${kind}: ${normalizedName}. Run /pi-builder validate.`, "info");
 }
 
-async function scaffoldExtension(name: string): Promise<void> {
+async function scaffoldExtension(name: string, ctx: ExtensionContext): Promise<void> {
   const dir = getUserExtensionsDir();
   await mkdir(dir, { recursive: true });
+  const path = join(dir, `${name}.ts`);
+
+  if (await pathExists(path)) {
+    ctx.ui.notify(`user extension already exists: ${path}`, "warning");
+    return;
+  }
+
   await writeFile(
-    join(dir, `${name}.ts`),
+    path,
     `import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 export default function (pi: ExtensionAPI) {
@@ -55,11 +62,18 @@ export default function (pi: ExtensionAPI) {
   );
 }
 
-async function scaffoldPrompt(name: string): Promise<void> {
+async function scaffoldPrompt(name: string, ctx: ExtensionContext): Promise<void> {
   const dir = getUserPromptsDir();
   await mkdir(dir, { recursive: true });
+  const path = join(dir, `${name}.md`);
+
+  if (await pathExists(path)) {
+    ctx.ui.notify(`user prompt already exists: ${path}`, "warning");
+    return;
+  }
+
   await writeFile(
-    join(dir, `${name}.md`),
+    path,
     `---
 description: ${toTitle(name)} prompt
 argument-hint: "[instructions]"
@@ -73,11 +87,18 @@ $ARGUMENTS
   );
 }
 
-async function scaffoldSkill(name: string): Promise<void> {
+async function scaffoldSkill(name: string, ctx: ExtensionContext): Promise<void> {
   const dir = join(getUserSkillsDir(), name);
   await mkdir(dir, { recursive: true });
+  const path = join(dir, "SKILL.md");
+
+  if (await pathExists(path)) {
+    ctx.ui.notify(`user skill already exists: ${path}`, "warning");
+    return;
+  }
+
   await writeFile(
-    join(dir, "SKILL.md"),
+    path,
     `---
 name: ${name}
 description: ${toTitle(name)} workflow. Use when the user asks for ${name.replaceAll("-", " ")} help.
@@ -96,11 +117,18 @@ description: ${toTitle(name)} workflow. Use when the user asks for ${name.replac
   );
 }
 
-async function scaffoldTheme(name: string): Promise<void> {
+async function scaffoldTheme(name: string, ctx: ExtensionContext): Promise<void> {
   const dir = getUserThemesDir();
   await mkdir(dir, { recursive: true });
+  const path = join(dir, `${name}.json`);
+
+  if (await pathExists(path)) {
+    ctx.ui.notify(`user theme already exists: ${path}`, "warning");
+    return;
+  }
+
   await writeFile(
-    join(dir, `${name}.json`),
+    path,
     `${JSON.stringify(
       {
         name,
@@ -111,6 +139,16 @@ async function scaffoldTheme(name: string): Promise<void> {
     )}\n`,
     "utf8",
   );
+}
+
+async function pathExists(path: string): Promise<boolean> {
+  try {
+    const { access } = await import("node:fs/promises");
+    await access(path);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function normalizeName(value: string): string {

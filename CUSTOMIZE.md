@@ -23,7 +23,24 @@ Common subcommands:
 /pi-builder sync
 /pi-builder upgrade
 /pi-builder doctor
+/pi-builder agents
 ```
+
+## Personal agent rules
+
+Use this command to edit your personal injected AGENTS.md:
+
+```text
+/pi-builder agents
+```
+
+The file lives at:
+
+```text
+user/AGENTS.md
+```
+
+pi-builder injects it into every session for personal rules, code style, and preferences.
 
 ## Where customizations go
 

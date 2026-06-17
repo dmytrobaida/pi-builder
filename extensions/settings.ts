@@ -1,6 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { NPM_PACKAGE_SOURCE } from "./constants.js";
-import { getGlobalSettingsPath, getPrivateGitPackageSource } from "./utils.js";
+import { getGlobalSettingsPath, getLocalPackageSource } from "./utils.js";
 
 type PackageEntry = string | { source?: string; [key: string]: unknown };
 
@@ -9,26 +9,26 @@ type PiSettings = {
   [key: string]: unknown;
 };
 
-export async function replaceNpmPackageWithPrivateGitRepo(configRepo: string): Promise<boolean> {
+export async function replaceNpmPackageWithLocalRepo(): Promise<boolean> {
   const settingsPath = getGlobalSettingsPath();
   const settings = await readSettings(settingsPath);
   const packages = settings.packages ?? [];
-  const gitPackageSource = getPrivateGitPackageSource(configRepo);
+  const localPackageSource = getLocalPackageSource();
   let replaced = false;
   let alreadyConfigured = false;
 
   const nextPackages = packages.map((entry) => {
-    if (entry === gitPackageSource) {
+    if (entry === localPackageSource) {
       alreadyConfigured = true;
       return entry;
     }
 
     if (entry === NPM_PACKAGE_SOURCE) {
       replaced = true;
-      return gitPackageSource;
+      return localPackageSource;
     }
 
-    if (typeof entry === "object" && entry.source === gitPackageSource) {
+    if (typeof entry === "object" && entry.source === localPackageSource) {
       alreadyConfigured = true;
       return entry;
     }
@@ -37,7 +37,7 @@ export async function replaceNpmPackageWithPrivateGitRepo(configRepo: string): P
       replaced = true;
       return {
         ...entry,
-        source: gitPackageSource,
+        source: localPackageSource,
       };
     }
 
@@ -45,7 +45,7 @@ export async function replaceNpmPackageWithPrivateGitRepo(configRepo: string): P
   });
 
   if (!replaced && !alreadyConfigured) {
-    nextPackages.push(gitPackageSource);
+    nextPackages.push(localPackageSource);
     replaced = true;
   }
 

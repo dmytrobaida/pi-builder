@@ -3,6 +3,12 @@ import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { STATUS_KEY } from "./constants.js";
+import {
+  compareUserDevTags,
+  getLatestLocalUserDevTag,
+  getLatestRemoteUserDevTag,
+  type UserDevTag,
+} from "./tags.js";
 import { getCommandOutputMessage, getRepoDir } from "./utils.js";
 
 export type PiBuilderStatus = "running" | "ready" | "dirty" | "upgrade" | "error";
@@ -51,10 +57,11 @@ export async function refreshPiBuilderWidget(
     return;
   }
 
-  const [branch, dirty, origin, upstream, gh] = await Promise.all([
-    getCurrentBranch(pi, repoDir),
+  const [dirty, origin, localTag, remoteTag, upstream, gh] = await Promise.all([
     getDirtySummary(pi, repoDir),
     getRemoteSummary(pi, repoDir, "origin", "main"),
+    getLatestLocalUserDevTag(pi, repoDir),
+    getLatestRemoteUserDevTag(pi, repoDir),
     getUpstreamSummary(pi, repoDir),
     getGhSummary(pi),
   ]);
@@ -63,8 +70,7 @@ export async function refreshPiBuilderWidget(
 
   setPiBuilderWidget(ctx, [
     ctx.ui.theme.bold("pi-builder"),
-    `  config: ${formatConfigState(ctx, dirty.changedFiles, origin.ahead, origin.behind)}`,
-    `  branch: ${ctx.ui.theme.fg("muted", branch)}`,
+    `  local: ${formatLocalState(ctx, dirty.changedFiles, origin.ahead, origin.behind, localTag, remoteTag)}`,
     `  upstream: ${formatUpstreamState(ctx, upstream)}`,
     `  gh: ${formatGhState(ctx, gh)}`,
     `  path: ${ctx.ui.theme.fg("muted", repoDir)}`,
@@ -78,10 +84,11 @@ export async function getPiBuilderStatusText(pi: ExtensionAPI): Promise<string> 
     return [`pi-builder status`, `config repo: missing`, `path: ${repoDir}`].join("\n");
   }
 
-  const [branch, dirty, origin, upstream, gh] = await Promise.all([
-    getCurrentBranch(pi, repoDir),
+  const [dirty, origin, localTag, remoteTag, upstream, gh] = await Promise.all([
     getDirtySummary(pi, repoDir),
     getRemoteSummary(pi, repoDir, "origin", "main"),
+    getLatestLocalUserDevTag(pi, repoDir),
+    getLatestRemoteUserDevTag(pi, repoDir),
     getUpstreamSummary(pi, repoDir),
     getGhSummary(pi),
   ]);
@@ -89,9 +96,7 @@ export async function getPiBuilderStatusText(pi: ExtensionAPI): Promise<string> 
   return [
     "pi-builder status",
     `path: ${repoDir}`,
-    `branch: ${branch}`,
-    `local changes: ${dirty.changedFiles}`,
-    `origin: ahead ${origin.ahead}, behind ${origin.behind}`,
+    `local: ${formatLocalText(dirty.changedFiles, origin.ahead, origin.behind, localTag, remoteTag)}`,
     `upstream: ${formatUpstreamText(upstream)}`,
     `gh: ${gh.ok ? "authenticated" : gh.message}`,
     "",
@@ -105,24 +110,6 @@ function setPiBuilderWidget(ctx: ExtensionContext, lines: string[]): void {
   ctx.ui.setWidget(STATUS_KEY, lines, {
     placement: "belowEditor",
   });
-}
-
-async function getCurrentBranch(pi: ExtensionAPI, repoDir: string): Promise<string> {
-  const result = await pi.exec("git", ["-C", repoDir, "branch", "--show-current"], {
-    timeout: 10_000,
-  });
-
-  if (result.code !== 0) {
-    return "unknown";
-  }
-
-  const branch = result.stdout.trim();
-
-  if (branch.length === 0) {
-    return "detached";
-  }
-
-  return branch;
 }
 
 async function getDirtySummary(
@@ -267,25 +254,69 @@ async function getGhSummary(pi: ExtensionAPI): Promise<{ ok: boolean; message: s
   };
 }
 
-function formatConfigState(
+function formatLocalState(
   ctx: ExtensionContext,
   changedFiles: number,
   ahead: number,
   behind: number,
+  localTag: UserDevTag | undefined,
+  remoteTag: UserDevTag | undefined,
 ): string {
+  const text = formatLocalText(changedFiles, ahead, behind, localTag, remoteTag);
+
+  if (changedFiles > 0 || ahead > 0 || behind > 0 || hasRemoteUpdate(localTag, remoteTag)) {
+    return ctx.ui.theme.fg("warning", text);
+  }
+
+  return ctx.ui.theme.fg("success", text);
+}
+
+function formatLocalText(
+  changedFiles: number,
+  ahead: number,
+  behind: number,
+  localTag: UserDevTag | undefined,
+  remoteTag: UserDevTag | undefined,
+): string {
+  const currentVersion = localTag?.name ?? "no user version yet";
+  const parts: string[] = [];
+
+  if (remoteTag !== undefined && hasRemoteUpdate(localTag, remoteTag)) {
+    parts.push(`new version available: ${remoteTag.name} (current ${currentVersion})`);
+  } else if (behind > 0) {
+    parts.push(`remote update available (${remoteTag?.name ?? `${behind} commit(s)`})`);
+  } else {
+    parts.push(`version ${currentVersion}`);
+  }
+
   if (changedFiles > 0) {
-    return ctx.ui.theme.fg("warning", `dirty, ${changedFiles} file(s) changed`);
+    parts.push(`${changedFiles} file(s) changed`);
   }
 
   if (ahead > 0) {
-    return ctx.ui.theme.fg("warning", `unpushed, ahead ${ahead}`);
+    parts.push(`unpushed commits ${ahead}`);
   }
 
-  if (behind > 0) {
-    return ctx.ui.theme.fg("warning", `behind origin ${behind}`);
+  if (parts.length === 1 && changedFiles === 0 && ahead === 0 && behind === 0) {
+    parts.push("synced");
   }
 
-  return ctx.ui.theme.fg("success", "synced");
+  return parts.join(", ");
+}
+
+function hasRemoteUpdate(
+  localTag: UserDevTag | undefined,
+  remoteTag: UserDevTag | undefined,
+): boolean {
+  if (remoteTag === undefined) {
+    return false;
+  }
+
+  if (localTag === undefined) {
+    return true;
+  }
+
+  return compareUserDevTags(remoteTag, localTag) > 0;
 }
 
 function formatUpstreamState(ctx: ExtensionContext, upstream: UpstreamSummary): string {

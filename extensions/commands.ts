@@ -1,5 +1,6 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import parseArgv from "string-argv";
+import { editUserAgents, getUserAgentsPath } from "./agents.js";
 import { CUSTOMIZATION_HELP } from "./constants.js";
 import { runDoctor } from "./doctor.js";
 import { scaffoldCustomization, type ScaffoldKind } from "./scaffold.js";
@@ -19,6 +20,7 @@ Usage:
 /pi-builder sync
 /pi-builder upgrade
 /pi-builder status
+/pi-builder agents
 /pi-builder doctor
 /pi-builder new-extension <name>
 /pi-builder new-skill <name>
@@ -77,6 +79,11 @@ export function registerCommands(pi: ExtensionAPI): void {
         return;
       }
 
+      if (subcommand === "agents") {
+        await editUserAgents(ctx);
+        return;
+      }
+
       if (subcommand === "doctor") {
         await runDoctor(pi, ctx);
         return;
@@ -103,6 +110,7 @@ function getSubcommandCompletions(prefix: string): Array<{ value: string; label:
     "upgrade",
     "status",
     "doctor",
+    "agents",
     "new-extension",
     "new-skill",
     "new-prompt",
@@ -153,5 +161,6 @@ Implementation guidance:
 - For custom skills, use user/skills/.
 - For prompt templates, use user/prompts/.
 - For themes, use user/themes/.
+- Put reusable personal agent rules in ${getUserAgentsPath()} with /pi-builder agents.
 - After changes, run /pi-builder validate.`;
 }

@@ -59,6 +59,15 @@ function blockProtectedBash(
     return undefined;
   }
 
+  const rawGitSyncCommand = getRawGitSyncCommand(command);
+
+  if (rawGitSyncCommand !== undefined) {
+    return {
+      block: true,
+      reason: `Use /pi-builder sync instead of raw ${rawGitSyncCommand}. It validates, commits, tags, and pushes with the required <current-extension-version>-udv-<number> tag.`,
+    };
+  }
+
   for (const protectedPath of PROTECTED_PATHS) {
     if (referencesProtectedPath(command, protectedPath)) {
       return {
@@ -69,6 +78,24 @@ function blockProtectedBash(
   }
 
   return undefined;
+}
+
+function getRawGitSyncCommand(command: string): string | undefined {
+  const match = command.match(
+    /(?:^|[;&|()\s])git(?:\s+-[A-Za-z]+(?:\s+[^;&|()\s]+)?)*\s+(commit|push|tag)\b/,
+  );
+
+  if (match === null) {
+    return undefined;
+  }
+
+  const subcommand = match[1];
+
+  if (subcommand === undefined) {
+    return undefined;
+  }
+
+  return `git ${subcommand}`;
 }
 
 function referencesProtectedPath(command: string, protectedPath: string): boolean {

@@ -3,6 +3,12 @@ import { cp, mkdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { PI_AGENT_DIR } from "./config.js";
 import { refreshPiBuilderWidget, setPiBuilderStatus } from "./status.js";
+import {
+  compareUserDevTags,
+  getLatestLocalUserDevTag,
+  getLatestRemoteUserDevTag,
+  getLocalUserDevTags,
+} from "./tags.js";
 import { validateConfigRepo } from "./validation.js";
 import {
   getCommandOutputMessage,
@@ -33,6 +39,12 @@ export async function syncGlobalPiConfig(pi: ExtensionAPI, ctx: ExtensionContext
 
 export async function pushConfigRepo(pi: ExtensionAPI, ctx: ExtensionContext): Promise<void> {
   const repoDir = getRepoDir();
+  const upToDate = await ensureLocalConfigIsUpToDate(pi, repoDir, ctx);
+
+  if (!upToDate) {
+    return;
+  }
+
   const valid = await validateConfigRepo(pi, ctx);
 
   if (!valid) {
@@ -170,6 +182,69 @@ export async function upgradeConfigRepo(pi: ExtensionAPI, ctx: ExtensionContext)
   ctx.ui.notify(`pi-builder config upgraded and pushed to private repo with tag ${tag}.`, "info");
 }
 
+async function ensureLocalConfigIsUpToDate(
+  pi: ExtensionAPI,
+  repoDir: string,
+  ctx: ExtensionContext,
+): Promise<boolean> {
+  setPiBuilderStatus(ctx, "running", "checking remote config status");
+
+  const fetchResult = await pi.exec("git", ["-C", repoDir, "fetch", "origin", "main", "--tags"], {
+    timeout: 60_000,
+  });
+
+  if (fetchResult.code !== 0) {
+    notifyGitError(fetchResult, "Failed to fetch private config repo before sync", ctx);
+    return false;
+  }
+
+  const remoteSummary = await getRemoteMainSummary(pi, repoDir);
+  const [localTag, remoteTag] = await Promise.all([
+    getLatestLocalUserDevTag(pi, repoDir),
+    getLatestRemoteUserDevTag(pi, repoDir),
+  ]);
+  const hasRemoteTagUpdate =
+    remoteTag !== undefined &&
+    (localTag === undefined || compareUserDevTags(remoteTag, localTag) > 0);
+
+  if (remoteSummary.behind > 0 || hasRemoteTagUpdate) {
+    const version = remoteTag?.name ?? `${remoteSummary.behind} remote commit(s)`;
+    const message = `Private config repo has remote updates (${version}). Pull/merge them before /pi-builder sync to avoid conflicts.`;
+    setPiBuilderStatus(ctx, "error", message);
+    ctx.ui.notify(message, "error");
+    await refreshPiBuilderWidget(pi, ctx);
+    return false;
+  }
+
+  return true;
+}
+
+async function getRemoteMainSummary(
+  pi: ExtensionAPI,
+  repoDir: string,
+): Promise<{ ahead: number; behind: number }> {
+  const result = await pi.exec(
+    "git",
+    ["-C", repoDir, "rev-list", "--left-right", "--count", "HEAD...origin/main"],
+    {
+      timeout: 10_000,
+    },
+  );
+
+  if (result.code !== 0) {
+    return { ahead: 0, behind: 0 };
+  }
+
+  const [aheadRaw, behindRaw] = result.stdout.trim().split(/\s+/);
+  const ahead = Number.parseInt(aheadRaw ?? "0", 10);
+  const behind = Number.parseInt(behindRaw ?? "0", 10);
+
+  return {
+    ahead: Number.isNaN(ahead) ? 0 : ahead,
+    behind: Number.isNaN(behind) ? 0 : behind,
+  };
+}
+
 async function copyGlobalResource(name: string, destination: string): Promise<void> {
   const source = join(PI_AGENT_DIR, name);
   await mkdir(destination, { recursive: true });
@@ -192,17 +267,13 @@ async function copyGlobalResource(name: string, destination: string): Promise<vo
 async function getNextUserDevTag(pi: ExtensionAPI, repoDir: string): Promise<string> {
   const version = await getPackageVersion(repoDir);
   const prefix = `${version}-udv-`;
-  const tagsResult = await pi.exec("git", ["-C", repoDir, "tag", "--list", `${prefix}*`], {
+  await pi.exec("git", ["-C", repoDir, "fetch", "origin", "--tags"], {
     timeout: 30_000,
   });
 
-  if (tagsResult.code !== 0) {
-    return `${prefix}1`;
-  }
-
   let max = 0;
 
-  for (const tag of tagsResult.stdout.split("\n")) {
+  for (const tag of await getLocalUserDevTags(pi, repoDir)) {
     if (!tag.startsWith(prefix)) {
       continue;
     }

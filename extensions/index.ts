@@ -2,11 +2,13 @@ import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-a
 import { existsSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { registerCustomizationAdvisor } from "./advisor.js";
+import { registerUserAgentsInjection } from "./agents.js";
 import { registerCommands } from "./commands.js";
 import { CONFIG_REPO_NAME } from "./config.js";
 import { SOURCE_REPO_URL } from "./constants.js";
 import { registerGuardrails } from "./guardrails.js";
-import { replaceNpmPackageWithPrivateGitRepo } from "./settings.js";
+import { replaceNpmPackageWithLocalRepo } from "./settings.js";
 import { refreshPiBuilderWidget, setPiBuilderStatus } from "./status.js";
 import { getCommandOutputMessage, getRepoDir } from "./utils.js";
 
@@ -15,6 +17,8 @@ const DEFAULT_BRANCH = "HEAD";
 export default function (pi: ExtensionAPI) {
   registerGuardrails(pi);
   registerCommands(pi);
+  registerUserAgentsInjection(pi);
+  registerCustomizationAdvisor(pi);
 
   pi.on("session_start", async (_event, ctx) => {
     setPiBuilderStatus(ctx, "running", "checking setup");
@@ -85,7 +89,7 @@ export default function (pi: ExtensionAPI) {
         return;
       }
 
-      await updatePackageSource(configRepo, ctx);
+      await updatePackageSource(ctx);
       await refreshPiBuilderWidget(pi, ctx);
       return;
     }
@@ -257,7 +261,7 @@ async function pushConfigRepo(
     return;
   }
 
-  await updatePackageSource(configRepo, ctx);
+  await updatePackageSource(ctx);
   await refreshPiBuilderWidget(pi, ctx);
   ctx.ui.notify(`pi-builder config repo is ready: ${configRepo}`, "info");
 }
@@ -279,21 +283,21 @@ async function cloneConfigRepo(
     return;
   }
 
-  await updatePackageSource(configRepo, ctx);
+  await updatePackageSource(ctx);
   await refreshPiBuilderWidget(pi, ctx);
   ctx.ui.notify(`pi-builder config repo cloned to ${repoDir}`, "info");
 }
 
-async function updatePackageSource(configRepo: string, ctx: ExtensionContext): Promise<void> {
+async function updatePackageSource(ctx: ExtensionContext): Promise<void> {
   try {
-    const changed = await replaceNpmPackageWithPrivateGitRepo(configRepo);
+    const changed = await replaceNpmPackageWithLocalRepo();
 
     if (!changed) {
       return;
     }
 
     ctx.ui.notify(
-      "pi-builder switched global Pi settings from npm package to private git repo. Restart Pi to load the private package source.",
+      "pi-builder switched global Pi settings from npm package to local config repo. Restart Pi to load the local package source.",
       "info",
     );
   } catch (error) {
