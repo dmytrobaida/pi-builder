@@ -2,6 +2,7 @@ import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-a
 import { cp, mkdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { PI_AGENT_DIR } from "./config.js";
+import { replaceNpmPackageWithLocalRepo } from "./settings.js";
 import { refreshPiBuilderWidget, setPiBuilderStatus } from "./status.js";
 import {
   compareUserDevTags,
@@ -178,8 +179,22 @@ export async function upgradeConfigRepo(pi: ExtensionAPI, ctx: ExtensionContext)
     return;
   }
 
+  await replacePackageSourceAfterUpgrade(ctx);
   await refreshPiBuilderWidget(pi, ctx);
   ctx.ui.notify(`pi-builder config upgraded and pushed to private repo with tag ${tag}.`, "info");
+}
+
+async function replacePackageSourceAfterUpgrade(ctx: ExtensionContext): Promise<void> {
+  const changed = await replaceNpmPackageWithLocalRepo();
+
+  if (!changed) {
+    return;
+  }
+
+  ctx.ui.notify(
+    "pi-builder switched global Pi settings to the local config repo. Restart Pi to load the local package source.",
+    "info",
+  );
 }
 
 async function ensureLocalConfigIsUpToDate(
