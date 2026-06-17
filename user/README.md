@@ -46,3 +46,5 @@ Push changes to your private GitHub repo:
 ```text
 /pi-builder sync
 ```
+
+Use `/pi-builder sync` instead of raw `git push`; it creates the required `<current-extension-version>-udv-<number>` tag before pushing.

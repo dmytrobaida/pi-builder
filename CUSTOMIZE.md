@@ -68,3 +68,9 @@ When the user wants to save changes to their private GitHub repository, run:
 ```text
 /pi-builder sync
 ```
+
+Do not use raw `git push` for normal config changes. `/pi-builder sync` is required because every push to the private config repo must include an auto-incremented tag in this format:
+
+```text
+<current-extension-version>-udv-<number>
+```

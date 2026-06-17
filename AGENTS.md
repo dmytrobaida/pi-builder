@@ -32,3 +32,4 @@ Do not edit these unless the user explicitly asks to change pi-builder itself:
 2. Put user customizations under `user/`.
 3. Validate with `/pi-builder validate`.
 4. Push user config changes with `/pi-builder sync` when requested.
+5. Never push the private config repo with raw `git push` unless the user explicitly asks. `/pi-builder sync` must be used because it creates the required `<current-extension-version>-udv-<number>` tag before pushing.

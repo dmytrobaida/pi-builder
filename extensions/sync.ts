@@ -139,11 +139,27 @@ export async function upgradeConfigRepo(pi: ExtensionAPI, ctx: ExtensionContext)
     return;
   }
 
+  setPiBuilderStatus(ctx, "running", "tagging upgraded config repo");
+
+  const tag = await getNextUserDevTag(pi, repoDir);
+  const tagResult = await pi.exec("git", ["-C", repoDir, "tag", tag], {
+    timeout: 30_000,
+  });
+
+  if (tagResult.code !== 0) {
+    notifyGitError(tagResult, `Failed to create tag ${tag}`, ctx);
+    return;
+  }
+
   setPiBuilderStatus(ctx, "running", "pushing upgraded config repo");
 
-  const pushResult = await pi.exec("git", ["-C", repoDir, "push", "origin", "HEAD:main"], {
-    timeout: 120_000,
-  });
+  const pushResult = await pi.exec(
+    "git",
+    ["-C", repoDir, "push", "origin", "HEAD:main", "--tags"],
+    {
+      timeout: 120_000,
+    },
+  );
 
   if (pushResult.code !== 0) {
     notifyGitError(pushResult, "Failed to push upgraded pi-builder config", ctx);
@@ -151,7 +167,7 @@ export async function upgradeConfigRepo(pi: ExtensionAPI, ctx: ExtensionContext)
   }
 
   await refreshPiBuilderWidget(pi, ctx);
-  ctx.ui.notify("pi-builder config upgraded from upstream and pushed to private repo.", "info");
+  ctx.ui.notify(`pi-builder config upgraded and pushed to private repo with tag ${tag}.`, "info");
 }
 
 async function copyGlobalResource(name: string, destination: string): Promise<void> {

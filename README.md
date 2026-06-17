@@ -164,6 +164,8 @@ Commit, tag, and push local config changes to your private repo's `main` branch:
 /pi-builder sync
 ```
 
+Use this command instead of raw `git push` for config changes so each private-repo push includes the required user-development tag.
+
 Sync tags use this format:
 
 ```text
@@ -176,7 +178,7 @@ Example:
 0.1.3-udv-1
 ```
 
-Merge the latest upstream pi-builder changes into your private config repo and push the result automatically:
+Merge the latest upstream pi-builder changes into your private config repo, tag the result, and push it automatically:
 
 ```text
 /pi-builder upgrade
